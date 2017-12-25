@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>缝纫机乐队 —— 都选C</title>
+		<style type="text/css">
+			body{
+				background: linear-gradient(to top left,#000033,#000088,#000033);
+			}
+			.wrap{
+				width: 1050px;
+				height: 650px;
+				margin: 100px auto;
+				position: relative;
+				box-shadow: 0 0 50px #000033; 
+			}
+			.imgs{
+				position: absolute;
+				top: 0;
+				right: 0;
+				width: 800px;
+				height: 100%;
+				overflow: hidden;
+			}
+			.imgs img{
+				transition: 2s;
+				width: 100%;
+				position: absolute;
+				top: 0;
+				left: 0;
+				opacity: 0;
+			}
+			.imgs img:nth-of-type(1){
+				opacity: 1;
+			}
+			.box{
+				width: 800px;
+				height: 200px;
+				overflow: hidden;
+				position: absolute;
+				top: 150px;
+				right: 0;
+				z-index: 10;
+			}
+			ul{
+				width: 800px;
+				position: absolute;
+				list-style-type: none;
+				margin: 0;
+				padding: 0;
+				text-align: center;
+				color: deepskyblue;
+				line-height: 40px;
+				font-weight: 700;
+				top: 80px;
+			}
+			li{
+				opacity: 0.5;
+			}
+			audio{
+				width: 800px;
+				position: absolute;
+				bottom: 0;
+				right: 0;
+				opacity: 0.8;
+			}
+			ol{
+				list-style-type: none;
+				padding: 0;
+				margin: 0;
+				position: absolute;
+				left: 0;
+				z-index: 10;
+				width: 250px;
+				height: 100%;
+				font-size: 14px;
+				background: rgba(123,104,238,0.9);
+			}
+			dl{
+				height: 40px;
+				background: #eee;
+				margin: 5px 0;
+				padding: 0 10px;
+				line-height: 40px;
+				font-weight: 700;
+				cursor: pointer;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<div class="imgs">
+				<img src="img/1_1.jpg"/>
+				<img src="img/1_2.jpg"/>
+				<img src="img/1_3.jpg"/>
+				<img src="img/1_4.jpg"/>
+				<img src="img/1_5.jpg"/>
+			</div>
+			<ol>
+				<!-- LRC格式 -->
+				<dl>都选C - 赵英俊</dl>
+				<dl>拥抱你 - 易烊千玺、关晓彤、王嘉</dl>
+				<dl>我们都一样 - 张杰</dl>
+				<dl>追梦赤子心 - 鹿晗</dl>
+			</ol>
+			<div class="box">
+				<ul id="show"></ul>
+			</div>
+			<audio controls="controls" src="demo/Demo0.mp3" id="music1"></audio>
+		</div>
+	</body>
+	<script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+	<script>
+		//背景图片切换
+		var imgs = document.getElementsByTagName("img");
+		var k=0;
+		var imgCount = 0;
+		setInterval(function(){
+			k++;
+			if(k > imgs.length-1){
+				k = 0;
+			}
+			imgs[imgCount].style.opacity = "0";
+			imgCount = k;
+			imgs[k].style.opacity = "1";
+		},10000);
+		
+		//歌词数组
+		var songWords = [];
+		//时间数组
+		var time = [];
+		var min = [];
+		var sec = [];
+		//获取歌词
+		getData(0);
+		function getData(thisIndex){
+			$.ajax({
+				type:"post",
+				url:"song.php",
+				async:true,
+				data: {index: thisIndex},
+				dataType: "json",
+				success: function(data){
+					console.log(data);
+					addSongWords(data);
+				}
+			});
+		}
+		//添加歌词
+		function addSongWords(data){
+			var show = document.getElementById("show");
+			show.innerHTML = "";
+			time = [];
+			min = [];
+			sec = [];
+			for(i in data){
+				//歌词
+				songWords[i] = data[i][0].split("]")[1];
+				//歌词对应时间
+				time[i] = data[i][0].split("]")[0].split("[")[1];
+				min[i] = time[i].split(":")[0];
+				sec[i] = time[i].split(":")[1];
+				show.innerHTML += "<li>"+songWords[i] + "</li>";	
+			}
+			console.log(time,min,sec);
+		}
+		
+		var audios = document.getElementById('music1');
+		//切换歌曲
+		var dls = document.getElementsByTagName("dl");
+		var lisCount = 0;
+		for(var i=0;i<dls.length;i++){
+			dls[i].index = i;
+			var dlsCount = 0;
+			dls[i].onclick = function(){
+				console.log(this.index);
+//				console.log(dlsCount);
+				dls[dlsCount].style.background = "#eee";
+				this.style.background = "#fff";
+				dlsCount = this.index;
+				for(var j=0;j<imgs.length;j++){
+					imgs[j].src = "img/"+(this.index+1)+"_"+(j+1)+".jpg";
+				}
+				//歌曲相应改变
+				audios.src = "demo/Demo"+this.index+".mp3";
+				//保证歌词从头开始
+				show.style.transform = "translateY(0px)";
+				//歌词对应改变
+				getData(this.index);
+			}
+		}
+		
+		//播放控制时间和歌词
+		window.onload =function(){
+			audios.onplay=function(){
+				audios.addEventListener("timeupdate",function(){
+				   	console.log(this.currentTime);
+				   	//currentTime 实时获取播放时间
+				   	var currTime = this.currentTime;
+				   	for(i in time){
+				   		if(currTime >= Number(min[i])*60 + Number(sec[i])){
+							palyer(i);
+						}
+				   	}
+				});
+			}
+		}
+		//控制歌词
+		function palyer(index){
+//			console.log(audios.currentTime,Number(min[index])*60 + Number(sec[index]));
+			var lis = document.getElementsByTagName("li");
+			show.style.transition = "0.5s";
+			show.style.transform = "translateY(-"+( 40 * index) + "px)";
+			for(var i=0;i<lis.length;i++){
+				lis[i].style.color = "deepskyblue";
+				lis[i].style.opacity = "0.5";
+			}
+			if(index>=1){
+				lis[index - 1].style.opacity = "0.5";
+				if(index >=2){
+					lis[index - 2].style.opacity = "0.2";
+					if(index>=3){
+						lis[index - 3].style.opacity = "0";
+					}
+				}
+			}
+			lis[index].style.color = "mediumspringgreen";
+			lis[index].style.opacity = "1";
+		}
+		
+	</script>
+</html>
